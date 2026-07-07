@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENMEI Coach Development Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --sidebar-bg:#0A0A0A;
+    --surface:#141416;
+    --surface-hover:#1B1C1F;
+    --ink:#F2F3F5;
+    --ink-soft:#8B8F99;
+    --line:rgba(255,255,255,0.09);
+    --brand:#FF8A3D;
+    --green:#33D68C;
+    --green-bg:rgba(51,214,140,0.12);
+    --orange:#FFB020;
+    --orange-bg:rgba(255,176,32,0.12);
+    --red:#FF5C5C;
+    --red-bg:rgba(255,92,92,0.14);
+    --gray:#7C8291;
+    --gray-bg:rgba(124,130,145,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:'Inter',sans-serif; background:var(--bg); color:var(--ink);}
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif; margin:0;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header.topbar{
+    background:var(--bg); border-bottom:1px solid var(--line);
+    padding:16px 24px;
+  }
+  header.topbar h1{font-size:1.25rem; font-weight:700; color:var(--brand); letter-spacing:-0.01em;}
+  header.topbar .sub{font-size:0.75rem; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:3px;}
+
+  .app-body{display:flex; min-height:calc(100vh - 62px);}
+
+  aside.sidebar{
+    width:250px; flex-shrink:0; background:var(--sidebar-bg); border-right:1px solid var(--line);
+    padding:14px 10px; overflow-y:auto;
+  }
+  .nav-link, .nav-header{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:9px 12px; border-radius:7px; font-size:0.85rem; font-weight:600; color:var(--ink-soft);
+    cursor:pointer; transition:background .15s, color .15s; user-select:none;
+  }
+  .nav-link:hover, .nav-header:hover{background:var(--surface-hover); color:var(--ink);}
+  .nav-link.active{background:var(--surface-hover); color:var(--brand);}
+  .nav-header .chev{font-size:0.65rem; transition:transform .15s; color:var(--ink-soft);}
+  .nav-group.open .nav-header .chev{transform:rotate(90deg);}
+  .nav-sub{max-height:0; overflow:hidden; transition:max-height .2s ease;}
+  .nav-group.open .nav-sub{max-height:900px;}
+  .nav-sub .nav-link{padding-left:24px; font-weight:500; font-size:0.82rem;}
+  .nav-sub .nav-link .status-dot{margin-right:6px;}
+  .sidebar-section-label{font-size:0.68rem; text-transform:uppercase; letter-spacing:.06em; color:#565B66; padding:14px 12px 4px;}
+
+  main{flex:1; padding:24px 30px 60px; min-width:0;}
+
+  .legend{
+    display:flex; gap:18px; align-items:center; font-size:0.78rem; color:var(--ink-soft);
+    margin:0 0 18px; flex-wrap:wrap;
+  }
+  .legend .item{display:flex; align-items:center; gap:6px;}
+  .dot{width:8px; height:8px; border-radius:50%; display:inline-block;}
+  .dot.green{background:var(--green);} .dot.orange{background:var(--orange);}
+  .dot.red{background:var(--red);} .dot.gray{background:var(--gray);}
+
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:20px;
+    font-size:0.76rem; font-weight:600; white-space:nowrap;
+  }
+  .chip.green{background:var(--green-bg); color:var(--green);}
+  .chip.orange{background:var(--orange-bg); color:var(--orange);}
+  .chip.red{background:var(--red-bg); color:var(--red);}
+  .chip.gray{background:var(--gray-bg); color:var(--gray);}
+  .chip .dot{width:7px; height:7px;}
+
+  .view-title{font-size:1.05rem; font-weight:700; margin-bottom:4px;}
+  .view-sub{font-size:0.82rem; color:var(--ink-soft); margin-bottom:18px;}
+
+  .simple-list{display:flex; flex-direction:column; gap:8px;}
+  .simple-row{
+    background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:12px; cursor:pointer;
+  }
+  .simple-row:hover{background:var(--surface-hover);}
+  .simple-row .name{font-weight:600; font-size:0.88rem;}
+
+  .attn-row{border-left:3px solid var(--gray);}
+  .attn-row.red{border-left-color:var(--red);}
+  .attn-row.orange{border-left-color:var(--orange);}
+  .attn-row .item-label{color:var(--ink-soft); font-size:0.78rem; margin-top:2px;}
+
+  .empty-state{padding:40px; text-align:center; color:var(--ink-soft); background:var(--surface); border:1px solid var(--line); border-radius:10px;}
+  .empty-state .big{font-size:1.8rem; margin-bottom:6px;}
+
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:22px;}
+  .stat-card{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px;}
+  .stat-card .num{font-family:'Space Grotesk',sans-serif; font-size:1.7rem; font-weight:700;}
+  .stat-card .lbl{font-size:0.75rem; color:var(--ink-soft); margin-top:2px;}
+  .stat-card.red .num{color:var(--red);}
+  .stat-card.orange .num{color:var(--orange);}
+  .stat-card.green .num{color:var(--green);}
+
+  .detail-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(280px,1fr)); gap:14px;}
+  .section-card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px;}
+  .section-card h3{font-size:0.9rem; margin-bottom:12px;}
+  .row-item{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:0.83rem;}
+  .row-item:last-child{border-bottom:none;}
+  .row-item .label{color:var(--ink-soft);}
+  .row-item .val{font-family:'IBM Plex Mono',monospace; font-size:0.8rem; color:var(--ink);}
+
+  .updated-note{font-size:0.72rem; color:var(--ink-soft); margin-top:26px; font-family:'IBM Plex Mono',monospace;}
+
+  .data-footer{
+    position:sticky; bottom:0; left:0; right:0;
+    background:var(--sidebar-bg); border-top:1px solid var(--line);
+    padding:9px 24px; font-size:0.74rem; font-family:'IBM Plex Mono',monospace; color:var(--ink-soft);
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .data-footer .status-dot{width:7px; height:7px; border-radius:50%; display:inline-block; flex-shrink:0;}
+  .data-footer .status-dot.live{background:var(--green); box-shadow:0 0 0 3px rgba(51,214,140,0.18);}
+  .data-footer .status-dot.static{background:var(--gray);}
+  .data-footer strong{color:var(--ink); font-weight:600;}
+
+  @media (max-width:760px){
+    .app-body{flex-direction:column;}
+    aside.sidebar{width:100%; border-right:none; border-bottom:1px solid var(--line);}
+    main{padding:18px 16px 50px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>ENMEI Coach Development Tracker</h1>
+  <div class="sub">Milestones · Observations · 1:1s · Compliance</div>
+</header>
+
+<div class="app-body">
+  <aside class="sidebar">
+    <div class="nav-link active" id="nav-dashboard" onclick="goTo('dashboard')">Dashboard</div>
+
+    <div class="sidebar-section-label">By Coach</div>
+    <div class="nav-group" id="group-coaches">
+      <div class="nav-header" onclick="toggleGroup('group-coaches')">Coaches <span class="chev">▶</span></div>
+      <div class="nav-sub" id="coach-links"></div>
+    </div>
+
+    <div class="sidebar-section-label">By Category</div>
+    <div class="nav-group" id="group-observations">
+      <div class="nav-header" onclick="toggleGroup('group-observations')">Observations <span class="chev">▶</span></div>
+      <div class="nav-sub">
+        <div class="nav-link" onclick="goTo('obs-attention')">Needs Attention</div>
+        <div class="nav-link" onclick="goTo('obs-all')">All Coaches</div>
+      </div>
+    </div>
+    <div class="nav-group" id="group-milestones">
+      <div class="nav-header" onclick="toggleGroup('group-milestones')">Milestones <span class="chev">▶</span></div>
+      <div class="nav-sub">
+        <div class="nav-link" onclick="goTo('mile-attention')">Needs Attention</div>
+        <div class="nav-link" onclick="goTo('mile-all')">All Coaches</div>
+      </div>
+    </div>
+    <div class="nav-group" id="group-compliance">
+      <div class="nav-header" onclick="toggleGroup('group-compliance')">Compliance <span class="chev">▶</span></div>
+      <div class="nav-sub">
+        <div class="nav-link" onclick="goTo('comp-attention')">Needs Attention</div>
+        <div class="nav-link" onclick="goTo('comp-all')">All Coaches</div>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main-content"></main>
+</div>
+
+<footer id="data-status-footer" class="data-footer"></footer>
+
+<script>
+/* =========================================================
+   LIVE GOOGLE SHEET CONFIG
+   Paste your Spreadsheet ID (from the sheet's URL, the long
+   string between /d/ and /edit) and the exact tab name.
+   The sheet must be shared as "Anyone with the link can view."
+   ========================================================= */
+const SHEET_ID = "12HfrTSuu9H7Z5ktfHatSeLLtTR11JWN6KOtcXAcvReg";
+const TAB_NAME = "Sheet1"; // must match your tab name exactly
+
+let IS_LIVE = false;
+let LAST_SYNCED = null;
+const SNAPSHOT_DATE = "2026-07-07"; // used only if live fetch fails and fallback data is shown
+
+/* =========================================================
+   FALLBACK_DATA — used only if the live sheet can't be reached
+   (e.g. offline, sheet renamed, sharing settings changed).
+   Dates as "YYYY-MM-DD" strings. Empty string = not on file.
+   ========================================================= */
+const FALLBACK_DATA = [
+  { name:"Manon Stieglitz", startDate:"2026-08-24",
+    liabilityDate:"2026-08-24", liabilityExpiry:"",
+    firstAidDate:"2026-08-24", firstAidExpiry:"",
+    fireTrainingDate:"2026-08-24",
+    m3Date:"2026-08-24", m6Date:"", m12Date:"",
+    lastObs:"2026-08-24", nextObs:"",
+    last1on1:"2026-08-24", next1on1:"" },
+  { name:"Remy Spanierman", startDate:"2026-08-24",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Caroline Cefaly", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Isabel Daniella Lancaster", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Jordan Stanford", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Olivia Alexander", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Liz Lorie", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Lucrezia Gennari", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Mayowa Arikawe", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Millie Bromey-Davenport", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Olivia Cecutti", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" },
+  { name:"Regina Limes", startDate:"",
+    liabilityDate:"", liabilityExpiry:"",
+    firstAidDate:"", firstAidExpiry:"",
+    fireTrainingDate:"",
+    m3Date:"", m6Date:"", m12Date:"",
+    lastObs:"", nextObs:"",
+    last1on1:"", next1on1:"" }
+];
+
+const ORANGE_WINDOW_DAYS = 30;
+
+/* ---------- date helpers ---------- */
+function parseDate(str){
+  if(!str) return null;
+  const d = new Date(str.slice(0,10) + "T00:00:00");
+  return isNaN(d.getTime()) ? null : d;
+}
+function today(){
+  const t = new Date();
+  return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+}
+function daysFromToday(dateStr){
+  const d = parseDate(dateStr);
+  if(!d) return null;
+  return Math.round((d - today()) / 86400000);
+}
+function addMonths(dateStr, months){
+  const d = parseDate(dateStr);
+  if(!d) return null;
+  const r = new Date(d);
+  r.setMonth(r.getMonth() + months);
+  return r;
+}
+function fmt(dateStr){
+  if(!dateStr) return "—";
+  const d = parseDate(dateStr);
+  if(!d) return dateStr;
+  return d.toLocaleDateString('en-US', {year:'numeric', month:'short', day:'numeric'});
+}
+
+/* ---------- status logic ---------- */
+// Milestones: complete once a completion date exists. Otherwise judged against
+// the expected due date (start + months).
+function milestoneStatus(startDate, completionDate, months, label){
+  if(completionDate){
+    return {status:'green', text:'Completed ' + fmt(completionDate)};
+  }
+  if(!startDate){
+    return {status:'gray', text:'No start date on file'};
+  }
+  const due = addMonths(startDate, months);
+  const days = Math.round((due - today()) / 86400000);
+  if(days < 0) return {status:'red', text:'Overdue — was due ' + due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+  if(days <= ORANGE_WINDOW_DAYS) return {status:'orange', text:'Due ' + due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})};
+  return {status:'green', text:'Not yet due (' + due.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ')'};
+}
+
+// Recurring pairs: Observations, 1:1s. Judged on the "next" date.
+function recurringStatus(nextDate){
+  if(!nextDate) return {status:'orange', text:'Next date not scheduled'};
+  const days = daysFromToday(nextDate);
+  if(days < 0) return {status:'red', text:'Overdue since ' + fmt(nextDate)};
+  if(days <= ORANGE_WINDOW_DAYS) return {status:'orange', text:'Due ' + fmt(nextDate)};
+  return {status:'green', text:'Scheduled ' + fmt(nextDate)};
+}
+
+// Compliance with expiry: Liability, First Aid.
+function expiryStatus(obtainedDate, expiryDate){
+  if(!obtainedDate) return {status:'red', text:'Not on file'};
+  if(!expiryDate) return {status:'orange', text:'Missing expiry date'};
+  const days = daysFromToday(expiryDate);
+  if(days < 0) return {status:'red', text:'Expired ' + fmt(expiryDate)};
+  if(days <= ORANGE_WINDOW_DAYS) return {status:'orange', text:'Expires ' + fmt(expiryDate)};
+  return {status:'green', text:'Valid through ' + fmt(expiryDate)};
+}
+
+// One-time compliance: Fire Training.
+function onceStatus(date){
+  if(!date) return {status:'red', text:'Not on file'};
+  return {status:'green', text:'On file ' + fmt(date)};
+}
+
+/* Worst-of, for rolling several sub-statuses into one category chip */
+const RANK = {red:3, orange:2, gray:1, green:0};
+function worst(list){
+  return list.reduce((a,b) => RANK[b.status] > RANK[a.status] ? b : a);
+}
+
+function chipHTML(s){
+  return `<span class="chip ${s.status}"><span class="dot ${s.status}"></span>${s.text}</span>`;
+}
+
+/* ---------- compute all statuses for a coach ---------- */
+function computeCoach(c){
+  const m3 = milestoneStatus(c.startDate, c.m3Date, 3, '3-month');
+  const m6 = milestoneStatus(c.startDate, c.m6Date, 6, '6-month');
+  const m12 = milestoneStatus(c.startDate, c.m12Date, 12, '12-month');
+  const obs = recurringStatus(c.nextObs);
+  const oneOnOne = recurringStatus(c.next1on1);
+  const liability = expiryStatus(c.liabilityDate, c.liabilityExpiry);
+  const firstAid = expiryStatus(c.firstAidDate, c.firstAidExpiry);
+  const fire = onceStatus(c.fireTrainingDate);
+  const milestones = {m3, m6, m12, overall: worst([m3,m6,m12])};
+  const observations = {obs, oneOnOne, overall: worst([obs, oneOnOne])};
+  const compliance = {liability, firstAid, fire, overall: worst([liability, firstAid, fire])};
+  return { coach: c, milestones, observations, compliance };
+}
+
+let computed = [];
+
+/* ---------- category config ---------- */
+const CATEGORIES = {
+  observations: {
+    label: 'Observations',
+    items: c => [
+      {label:'Observation', s:c.observations.obs},
+      {label:'1:1', s:c.observations.oneOnOne}
+    ],
+    overall: c => c.observations.overall
+  },
+  milestones: {
+    label: 'Milestones',
+    items: c => [
+      {label:'3-Month', s:c.milestones.m3},
+      {label:'6-Month', s:c.milestones.m6},
+      {label:'1-Year', s:c.milestones.m12}
+    ],
+    overall: c => c.milestones.overall
+  },
+  compliance: {
+    label: 'Compliance',
+    items: c => [
+      {label:'Liability Insurance', s:c.compliance.liability},
+      {label:'First Aid Certification', s:c.compliance.firstAid},
+      {label:'Fire Training', s:c.compliance.fire}
+    ],
+    overall: c => c.compliance.overall
+  }
+};
+
+/* ---------- sidebar coach links ---------- */
+function renderCoachLinks(){
+  const el = document.getElementById('coach-links');
+  el.innerHTML = computed
+    .slice()
+    .sort((a,b) => a.coach.name.localeCompare(b.coach.name))
+    .map(c => `<div class="nav-link" onclick="goTo('coach:${c.coach.name.replace(/'/g,"\\'")}')">${c.coach.name}</div>`)
+    .join('');
+}
+
+function toggleGroup(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+/* ---------- views ---------- */
+function legendHTML(){
+  return `<div class="legend">
+    <span class="item"><span class="dot green"></span> On track</span>
+    <span class="item"><span class="dot orange"></span> Due within 30 days</span>
+    <span class="item"><span class="dot red"></span> Overdue / expired</span>
+    <span class="item"><span class="dot gray"></span> No data on file</span>
+  </div>`;
+}
+
+function renderDashboard(){
+  const countBy = (catKey, status) => computed.filter(c => CATEGORIES[catKey].overall(c).status === status).length;
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="view-title">Dashboard</div>
+    <div class="view-sub">${computed.length} coaches on the roster. Quick counts below — drill into a category on the left for details.</div>
+    <div class="stat-grid">
+      <div class="stat-card red"><div class="num">${computed.filter(c => c.observations.overall.status==='red' || c.milestones.overall.status==='red' || c.compliance.overall.status==='red').length}</div><div class="lbl">Coaches with an overdue item</div></div>
+      <div class="stat-card orange"><div class="num">${computed.filter(c => (c.observations.overall.status==='orange' || c.milestones.overall.status==='orange' || c.compliance.overall.status==='orange') && !(c.observations.overall.status==='red' || c.milestones.overall.status==='red' || c.compliance.overall.status==='red')).length}</div><div class="lbl">Coaches due soon</div></div>
+      <div class="stat-card green"><div class="num">${computed.filter(c => c.observations.overall.status==='green' && c.milestones.overall.status!=='red' && c.milestones.overall.status!=='orange' && c.compliance.overall.status==='green').length}</div><div class="lbl">Fully on track</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num">${countBy('observations','red')+countBy('observations','orange')}</div><div class="lbl">Observations/1:1s flagged</div></div>
+      <div class="stat-card"><div class="num">${countBy('milestones','red')+countBy('milestones','orange')}</div><div class="lbl">Milestones flagged</div></div>
+      <div class="stat-card"><div class="num">${countBy('compliance','red')+countBy('compliance','orange')}</div><div class="lbl">Compliance items flagged</div></div>
+    </div>
+  `;
+}
+
+function renderCategoryAttention(catKey){
+  const cat = CATEGORIES[catKey];
+  const items = [];
+  computed.forEach(c => {
+    cat.items(c).forEach(chk => {
+      if(chk.s.status === 'red' || chk.s.status === 'orange'){
+        items.push({name:c.coach.name, label:chk.label, status:chk.s.status, text:chk.s.text});
+      }
+    });
+  });
+  items.sort((a,b) => (a.status === 'red' ? 0 : 1) - (b.status === 'red' ? 0 : 1));
+
+  const main = document.getElementById('main-content');
+  const listHTML = items.length === 0
+    ? `<div class="empty-state"><div class="big">✓</div>Nothing needs attention in ${cat.label} right now.</div>`
+    : `<div class="simple-list">${items.map(i => `
+        <div class="simple-row attn-row ${i.status}" onclick="goTo('coach:${i.name.replace(/'/g,"\\'")}')">
+          <div><div class="name">${i.name}</div><div class="item-label">${i.label} — ${i.text}</div></div>
+          ${chipHTML({status:i.status, text:i.status === 'red' ? 'Overdue' : 'Due soon'})}
+        </div>`).join('')}</div>`;
+
+  main.innerHTML = `
+    <div class="view-title">${cat.label} — Needs Attention</div>
+    <div class="view-sub">${items.length} item${items.length===1?'':'s'} flagged across the roster.</div>
+    ${listHTML}
+  `;
+}
+
+function renderCategoryAll(catKey){
+  const cat = CATEGORIES[catKey];
+  const rows = computed
+    .slice()
+    .sort((a,b) => {
+      const diff = RANK[cat.overall(b).status] - RANK[cat.overall(a).status];
+      return diff !== 0 ? diff : a.coach.name.localeCompare(b.coach.name);
+    });
+
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="view-title">${cat.label} — All Coaches</div>
+    <div class="view-sub">${legendHTML()}</div>
+    <div class="simple-list">
+      ${rows.map(c => `
+        <div class="simple-row" onclick="goTo('coach:${c.coach.name.replace(/'/g,"\\'")}')">
+          <div class="name">${c.coach.name}</div>
+          ${chipHTML(cat.overall(c))}
+        </div>`).join('')}
+    </div>
+  `;
+}
+
+function renderCoachDetail(name){
+  const c = computed.find(x => x.coach.name === name);
+  if(!c) return;
+  const main = document.getElementById('main-content');
+  main.innerHTML = `
+    <div class="view-title">${c.coach.name}</div>
+    <div class="view-sub">Start date: ${fmt(c.coach.startDate)}</div>
+    <div class="detail-grid">
+      <div class="section-card">
+        <h3>Development Milestones</h3>
+        <div class="row-item"><span class="label">3-Month</span>${chipHTML(c.milestones.m3)}</div>
+        <div class="row-item"><span class="label">6-Month</span>${chipHTML(c.milestones.m6)}</div>
+        <div class="row-item"><span class="label">1-Year</span>${chipHTML(c.milestones.m12)}</div>
+      </div>
+      <div class="section-card">
+        <h3>Observations &amp; 1:1s</h3>
+        <div class="row-item"><span class="label">Last Observation</span><span class="val">${fmt(c.coach.lastObs)}</span></div>
+        <div class="row-item"><span class="label">Next Observation</span>${chipHTML(c.observations.obs)}</div>
+        <div class="row-item"><span class="label">Last 1:1</span><span class="val">${fmt(c.coach.last1on1)}</span></div>
+        <div class="row-item"><span class="label">Next 1:1</span>${chipHTML(c.observations.oneOnOne)}</div>
+      </div>
+      <div class="section-card">
+        <h3>Compliance</h3>
+        <div class="row-item"><span class="label">Liability Insurance</span>${chipHTML(c.compliance.liability)}</div>
+        <div class="row-item"><span class="label">First Aid Certification</span>${chipHTML(c.compliance.firstAid)}</div>
+        <div class="row-item"><span class="label">Fire Training</span>${chipHTML(c.compliance.fire)}</div>
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- router ---------- */
+let currentView = 'dashboard';
+
+function goTo(view){
+  currentView = view;
+  if(view === 'dashboard') renderDashboard();
+  else if(view === 'obs-attention') renderCategoryAttention('observations');
+  else if(view === 'obs-all') renderCategoryAll('observations');
+  else if(view === 'mile-attention') renderCategoryAttention('milestones');
+  else if(view === 'mile-all') renderCategoryAll('milestones');
+  else if(view === 'comp-attention') renderCategoryAttention('compliance');
+  else if(view === 'comp-all') renderCategoryAll('compliance');
+  else if(view.startsWith('coach:')) renderCoachDetail(view.slice(6));
+}
+
+/* ---------- live Google Sheet fetch (no auth — read-only, public link) ---------- */
+function gvizDateToISO(v){
+  if(typeof v === 'string' && v.indexOf('Date(') === 0){
+    const parts = v.replace('Date(','').replace(')','').split(',').map(Number);
+    const d = new Date(parts[0], parts[1], parts[2]); // gviz month is already 0-indexed
+    return d.toISOString().slice(0,10);
+  }
+  return v;
+}
+
+async function fetchSheetJSON(tabName){
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(tabName)}&headers=1`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  const match = text.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\)\s*;?\s*$/);
+  if(!match) throw new Error('Unexpected response from Google Sheets — check sharing settings');
+  return JSON.parse(match[1]);
+}
+
+function parseCoachSheet(json){
+  const cols = (json.table.cols || []).map(c => String(c.label || '').trim().toLowerCase());
+  const rows = json.table.rows || [];
+  return rows.map(r => {
+    const cells = r.c || [];
+    const obj = {};
+    cols.forEach((label, i) => {
+      const cell = cells[i];
+      let v = cell ? cell.v : null;
+      if(typeof v === 'string' && v.indexOf('Date(') === 0) v = gvizDateToISO(v);
+      obj[label] = (v === null || v === undefined) ? '' : v;
+    });
+    return obj;
+  });
+}
+
+function getVal(obj, includes, excludes){
+  excludes = excludes || [];
+  for(const k in obj){
+    if(includes.every(s => k.indexOf(s) !== -1) && !excludes.some(s => k.indexOf(s) !== -1)){
+      return obj[k];
+    }
+  }
+  return '';
+}
+
+function mapRawRow(obj){
+  return {
+    name: getVal(obj, ['coach','name']),
+    startDate: getVal(obj, ['start','date']),
+    liabilityDate: getVal(obj, ['liability','date'], ['expiry']),
+    liabilityExpiry: getVal(obj, ['liability','expiry']),
+    firstAidDate: getVal(obj, ['first aid','date'], ['expiry']),
+    firstAidExpiry: getVal(obj, ['first aid','expiry']),
+    fireTrainingDate: getVal(obj, ['fire training'], ['expiry']),
+    m3Date: getVal(obj, ['3 month']),
+    m6Date: getVal(obj, ['6 month']),
+    m12Date: getVal(obj, ['1 year']) || getVal(obj, ['12 month']),
+    lastObs: getVal(obj, ['last observation']),
+    nextObs: getVal(obj, ['next observation']),
+    last1on1: getVal(obj, ['last','1:1']),
+    next1on1: getVal(obj, ['next','1:1']),
+  };
+}
+
+async function loadLiveData(){
+  try {
+    if(SHEET_ID === 'PASTE_YOUR_SPREADSHEET_ID_HERE') throw new Error('No Sheet ID configured yet');
+    const json = await fetchSheetJSON(TAB_NAME);
+    const rawRows = parseCoachSheet(json);
+    const mapped = rawRows.map(mapRawRow).filter(c => c.name && String(c.name).trim() !== '');
+    if(mapped.length === 0) throw new Error('No coach rows found — check TAB_NAME and sheet headers');
+    computed = mapped.map(computeCoach);
+    IS_LIVE = true;
+    LAST_SYNCED = new Date();
+  } catch(err){
+    console.warn('Live sheet fetch failed, showing saved snapshot instead:', err);
+    computed = FALLBACK_DATA.map(computeCoach);
+    IS_LIVE = false;
+  }
+  renderCoachLinks();
+  goTo(currentView);
+  renderDataFooter();
+}
+
+/* ---------- data status footer ---------- */
+function renderDataFooter(){
+  const el = document.getElementById('data-status-footer');
+  const editLink = SHEET_ID !== 'PASTE_YOUR_SPREADSHEET_ID_HERE'
+    ? `<a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit" target="_blank" style="color:var(--brand); text-decoration:none; margin-left:auto;">Open Google Sheet to edit ↗</a>`
+    : '';
+  if(IS_LIVE){
+    const t = LAST_SYNCED ? LAST_SYNCED.toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'}) : '';
+    el.innerHTML = `<span class="status-dot live"></span> <strong>Live &amp; linked to Google Sheets</strong> — last synced ${t} ${editLink}`;
+  } else {
+    el.innerHTML = `<span class="status-dot static"></span> Not connected — showing saved snapshot (${fmt(SNAPSHOT_DATE)}). Check SHEET_ID / sharing settings. ${editLink}`;
+  }
+}
+
+/* ---------- init ---------- */
+loadLiveData();
+setInterval(loadLiveData, 60000); // re-sync every 60 seconds
+</script>
+</body>
+</html>
